@@ -61,7 +61,7 @@ slot_placeholder.markdown(
 
 # Jika saldo habis
 if st.session_state.balance <= 0:
-    st.error("No money to bet on, So goodbye! 😢")
+    st.error("No money to bet on, Play again?")
     if st.button("🔄 Main Lagi (Reset Saldo $100)", use_container_width=True):
         st.session_state.balance = 100
         st.session_state.last_row = ['🍒', '🍉', '🍋']
@@ -73,9 +73,9 @@ else:
     with col1:
         bet = st.number_input(
             "Input the Bet ($):",
-            min_value=1,
-            max_value=int(st.session_state.balance),
-            value=min(10, int(st.session_state.balance)),
+            min_value=0.01,
+            max_value=float(st.session_state.balance),
+            value=min(10, float(st.session_state.balance)),
             step=1
         )
     with col2:

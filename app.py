@@ -6,9 +6,9 @@ st.set_page_config(page_title="Slot Machine", page_icon="🎰", layout="centered
 
 SYMBOLS = ['🍒', '🍉', '🍋', '⭐', '🔔']
 
-# Inisialisasi saldo di memori sesi browser (tanpa akun/database)
+# 1. Saldo awal diubah menjadi float (100.0)
 if 'balance' not in st.session_state:
-    st.session_state.balance = 100
+    st.session_state.balance = 100.0
 if 'last_row' not in st.session_state:
     st.session_state.last_row = ['🍒', '🍉', '🍋']
 if 'message' not in st.session_state:
@@ -26,8 +26,8 @@ def get_payout(row, bet):
             '⭐': 20,
             '🔔': 30
         }
-        return bet * multipliers.get(row[0], 0)
-    return 0
+        return float(bet * multipliers.get(row[0], 0))
+    return 0.0
 
 def render_slot_box(symbols_list, status_text=""):
     display_str = " &nbsp;|&nbsp; ".join(symbols_list)
@@ -49,34 +49,34 @@ def render_slot_box(symbols_list, status_text=""):
 st.title("🎰 Slot Machine")
 st.caption("Simbol & Hadiah: 🍒 (5x) | 🍉 (10x) | 🍋 (15x) | ⭐ (20x) | 🔔 (30x)")
 
-# Menampilkan saldo saat ini
+# Menampilkan saldo saat ini dengan 2 angka desimal
 st.metric(label="Current Balance", value=f"${st.session_state.balance:,.2f}")
 
-# Area kotak mesin slot (bisa diperbarui secara real-time saat animasi)
 slot_placeholder = st.empty()
 slot_placeholder.markdown(
     render_slot_box(st.session_state.last_row, "READY"),
     unsafe_allow_html=True
 )
 
-# Jika saldo habis
-if st.session_state.balance <= 0:
-    st.error("No money to bet on, Play again?")
-    if st.button("🔄 Main Lagi (Reset Saldo $100)", use_container_width=True):
-        st.session_state.balance = 100
+# 2. Pengecekan saldo habis disesuaikan untuk float (< 0.01)
+if st.session_state.balance < 0.01:
+    st.error("No money to bet on, So goodbye! 😢")
+    if st.button("🔄 Main Lagi (Reset Saldo $100.00)", use_container_width=True):
+        st.session_state.balance = 100.0
         st.session_state.last_row = ['🍒', '🍉', '🍋']
-        st.session_state.message = ("info", "Saldo telah di-reset ke $100!")
+        st.session_state.message = ("info", "Saldo telah di-reset ke $100.00!")
         st.rerun()
 else:
-    # Form input taruhan
     col1, col2 = st.columns([2, 1])
     with col1:
+        # 3. Semua parameter number_input menggunakan float
         bet = st.number_input(
             "Input the Bet ($):",
             min_value=0.01,
             max_value=float(st.session_state.balance),
-            value=min(10, float(st.session_state.balance)),
-            step=1
+            value=min(10.0, float(st.session_state.balance)),
+            step=0.50,
+            format="%.2f"
         )
     with col2:
         st.write("")
@@ -86,14 +86,13 @@ else:
     if spin_clicked:
         if bet > st.session_state.balance:
             st.warning("Balance not enough...")
-        elif bet <= 0:
+        elif bet <= 0.0:
             st.warning("Can't do that...")
         else:
-            # Kurangi saldo & tentukan hasil akhir
-            st.session_state.balance -= bet
+            # 4. Pembulatan round(..., 2) mencegah bug presisi float Python
+            st.session_state.balance = round(st.session_state.balance - bet, 2)
             final_row = spin_row()
 
-            # Animasi putaran reel persis seperti efek perlambatan kubik di kode asli Anda
             locked_symbols = []
             for target_symbol in final_row:
                 target_idx = SYMBOLS.index(target_symbol)
@@ -122,19 +121,17 @@ else:
                 )
                 time.sleep(0.12)
 
-            # Simpan hasil & hitung hadiah
             st.session_state.last_row = final_row
-            payout = get_payout(final_row, bet)
+            payout = round(get_payout(final_row, bet), 2)
 
             if payout > 0:
-                st.session_state.balance += payout
-                st.session_state.message = ("success", f"🎉 You won **${payout}**!")
+                st.session_state.balance = round(st.session_state.balance + payout, 2)
+                st.session_state.message = ("success", f"🎉 You won **${payout:,.2f}**!")
             else:
                 st.session_state.message = ("error", "Sorry you lost this round.")
 
             st.rerun()
 
-# Tampilkan pesan status putaran terakhir
 msg_type, msg_text = st.session_state.message
 if msg_type == "success":
     st.success(msg_text)
